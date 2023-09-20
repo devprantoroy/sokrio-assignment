@@ -17,3 +17,25 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
+
+Route::prefix('v1')->group(function () {
+    // API routes for version 1
+
+    Route::group(['namespace' => 'Api'], function(){
+
+        // API routes for Product
+        Route::group(['prefix' => 'product','namespace' => 'Product'], function(){
+            Route::post('add-product','ProductController@addProduct');
+        });
+
+         // API routes for Department Stock
+        Route::group(['prefix' => 'dep-stock','namespace' => 'DepStock'], function(){
+            Route::post('add-dep-stock','DepartmentStockController@addDepStock');
+        });
+    
+    
+    });
+});
+
+
+
