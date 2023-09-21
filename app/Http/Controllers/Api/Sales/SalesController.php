@@ -3,35 +3,36 @@
 namespace App\Http\Controllers\Api\Sales;
 
 use App\Http\Controllers\Controller;
+use App\Models\Sales;
+use App\Models\SalesItems;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
 class SalesController extends Controller
 {
-    public function addDepStock(Request $request){
-        
+    public function storeGenerate(Request $request){
+       
         // Create a validator instance
        $validator = Validator::make($request->all(), [
-           'name' => 'required|string|max:255',
-           'challan_no' =>'required|string|max:255|unique:departments',
-           'items' => [
-               'required',
-               function ($attribute, $value, $fail) {
-                   $items = json_decode($value, true);
-       
-                   if (!is_array($items)) {
-                       $fail('Invalid Data.');
-                   } else {
-                       foreach ($items as $item) {
-                           if (!isset($item['product_id']) || !isset($item['qty']) ||
-                               !is_numeric($item['product_id']) || !is_numeric($item['qty'])) {
-                               $fail('The items field must contain valid product_id and qty values.');
-                               break;
-                           }
-                       }
-                   }
-               },
-           ],
+           'products_id' => 'required|array',
+           "products_id.*" => 'required|integer',
+
+           'qty' =>'required|array',
+           "qty.*" => 'required|integer|min:1',
+
+           'unit' =>'required|array',
+           "unit.*" => 'required|string',
+
+           'sales_price' =>'required|array',
+           "sales_price.*" => 'required|integer',
+
+           'payable' =>'required|array',
+           "payable.*" => 'required|integer',
+
+           'pay' =>'required|string',
+           'due' =>'required|string',
+           'remarks' =>'sometimes|nullable',
        ]);
        
        // Check if validation fails
@@ -39,31 +40,39 @@ class SalesController extends Controller
            return response()->json($validator->errors(), 422);
        }
 
-    //    try {
-    //        // DB::beginTransaction();
+       try {
+        // DB::beginTransaction();
+            $items = $request->input('products_id');
+            $invoice_id = rand(11111111,99999999);
+            $grand_total = array_sum(array_map(function($a, $b) { return floatval($a) * floatval($b); }, $request->qty, $request->sales_price));
+            $paid = floatval($request->pay);
+            $due = floatval($grand_total) - $paid;
+    
+             //Create Invoice
+            $sales = Sales::create([
+            'invoice_id' => $invoice_id,
+            'pay' => $paid,
+            'due' => $due,
+            'grand_total' => floatval($grand_total),
+            ]);
+    
+             //Create Sales Product
+            foreach($items as $key => $item){
+                SalesItems::create([
+                    'sale_id' => $sales->id,
+                    'product_id' => $item,
+                    'quantity' => $request->qty[$key],
+                    'unit' => $request->unit[$key],
+                    'sales_price' => $request->sales_price[$key],
+                    'payable' => $request->payable[$key],
+                ]);
+            }
 
-    //         //Create Department
-    //        $dept = Departments::create([
-    //            'name' => $request->name,
-    //            'challan_no' => $request->challan_no,
-    //        ]);
-
-    //        $items = json_decode($request->items, true); // Retrieve the items array from the request
-
-    //        foreach ($items as $item) {
-    //            StockProducts::create([
-    //                'department_id' => $dept->id,
-    //                'product_id' => $item['product_id'],
-    //                'quantity' => $item['qty'],
-    //            ]);
-    //        }
-
-    //        return response()->json(['message' => 'Department and Stock created successfully.'], 200);
-
-    //        DB::commit(); // Commit the transaction if successful
-    //    } catch (\Exception $e) {
-    //        DB::rollback(); // Rollback the transaction on error
-    //        return response()->json(['message' => $e->getMessage()], 500);
-    //    }
+            return response()->json(['message' => 'Sales generated successfully.'], 200);
+            DB::commit(); // Commit the transaction if successful
+        } catch (\Exception $e) {
+            DB::rollback(); // Rollback the transaction on error
+            return response()->json(['message' => $e->getMessage()], 500);
+        }
    }
 }

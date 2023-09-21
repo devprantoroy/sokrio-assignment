@@ -17,4 +17,6 @@ class Sales extends Model
         'remarks',
         'status',
     ];
+
+    
 }

@@ -18,27 +18,12 @@ class DepartmentStockController extends Controller
          // Create a validator instance
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
-            'challan_no' =>'required|string|max:255|unique:departments',
-            'items' => [
-                'required',
-                function ($attribute, $value, $fail) {
-                    $items = json_decode($value, true);
-        
-                    if (!is_array($items)) {
-                        $fail('Invalid Data.');
-                    } else {
-                        foreach ($items as $item) {
-                            if (!isset($item['product_id']) || !isset($item['qty']) ||
-                                !is_numeric($item['product_id']) || !is_numeric($item['qty'])) {
-                                $fail('The items field must contain valid product_id and qty values.');
-                                break;
-                            }
-                        }
-                    }
-                },
-            ],
+            'challan_no' => 'required|string|max:255',
+            'items' => 'required|array',
+            'items.*.product_id' => 'required|integer',
+            'items.*.qty' => 'required|integer|min:1',
         ]);
-        
+
         // Check if validation fails
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
@@ -46,15 +31,17 @@ class DepartmentStockController extends Controller
 
         try {
             // DB::beginTransaction();
+            $dept = Departments::where('challan_no', trim($request->challan_no))->first();
+            if(!$dept){
+                //Create Department
+                $dept = Departments::create([
+                    'name' => $request->name,
+                    'challan_no' => $request->challan_no,
+                ]);
+            }
 
-             //Create Department
-            $dept = Departments::create([
-                'name' => $request->name,
-                'challan_no' => $request->challan_no,
-            ]);
-
-            $items = json_decode($request->items, true); // Retrieve the items array from the request
-
+            $items = $request->items; 
+             //Create Stock Product
             foreach ($items as $item) {
                 StockProducts::create([
                     'department_id' => $dept->id,

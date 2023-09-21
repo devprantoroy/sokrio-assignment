@@ -28,9 +28,14 @@ Route::prefix('v1')->group(function () {
             Route::post('add-product','ProductController@addProduct');
         });
 
-         // API routes for Department Stock
+        // API routes for Department Stock
         Route::group(['prefix' => 'dep-stock','namespace' => 'DepStock'], function(){
             Route::post('add-dep-stock','DepartmentStockController@addDepStock');
+        });
+
+        // API routes for Department Stock
+        Route::group(['prefix' => 'sales','namespace' => 'Sales'], function(){
+            Route::post('sales-generate','SalesController@storeGenerate');
         });
     
     
